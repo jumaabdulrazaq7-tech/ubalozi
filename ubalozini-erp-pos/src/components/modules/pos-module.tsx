@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { PaymentMethod } from "@/types/erp";
 
 type Branch = { id: string; name: string };
+type Customer = { id: string; name: string; phone: string };
 type Product = { id: string; name: string; brand: string; model: string; category: string; barcode: string; qr_code: string };
 type Device = {
   id: string;
@@ -46,9 +47,11 @@ type SaleResult = {
 export function PosModule() {
   const supabase = useMemo(() => createClient(), []);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [branchId, setBranchId] = useState("");
+  const [customerId, setCustomerId] = useState("walk-in");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash");
@@ -71,20 +74,22 @@ export function PosModule() {
     setLoading(true);
     setError(null);
 
-    const [branchResult, productResult] = await Promise.all([
+    const [branchResult, customerResult, productResult] = await Promise.all([
       supabase.from("branches").select("id,name").eq("status", "active").order("name"),
+      supabase.from("customers").select("id,name,phone").order("name"),
       supabase.from("products").select("id,name,brand,model,category,barcode,qr_code").eq("is_active", true).order("name"),
     ]);
 
-    if (branchResult.error || productResult.error) {
+    if (branchResult.error || customerResult.error || productResult.error) {
       setLoading(false);
-      setError(branchResult.error?.message || productResult.error?.message || "Unable to load POS data.");
+      setError(branchResult.error?.message || customerResult.error?.message || productResult.error?.message || "Unable to load POS data.");
       return;
     }
 
     const loadedBranches = (branchResult.data ?? []) as Branch[];
     const nextBranchId = selectedBranchId || loadedBranches[0]?.id || "";
     setBranches(loadedBranches);
+    setCustomers((customerResult.data ?? []) as Customer[]);
     setProducts((productResult.data ?? []) as Product[]);
     setBranchId(nextBranchId);
 
@@ -182,7 +187,7 @@ export function PosModule() {
 
     const { data, error: rpcError } = await supabase.rpc("create_pos_sale", {
       p_branch_id: branchId,
-      p_customer_id: null,
+      p_customer_id: customerId === "walk-in" ? null : customerId,
       p_items: cart.map((item) => ({
         product_id: item.product_id,
         imei_device_id: item.imei_device_id,
@@ -297,6 +302,20 @@ export function PosModule() {
                 </TableBody>
               </Table>
               <FieldGroup>
+                <Field>
+                  <FieldLabel>Customer</FieldLabel>
+                  <Select value={customerId} onValueChange={(value) => setCustomerId(value ?? "walk-in")}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="walk-in">Walk-in Customer</SelectItem>
+                        {customers.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id}>{customer.name} - {customer.phone}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
                 <Field><FieldLabel>Discount TZS</FieldLabel><Input type="number" min="0" value={discount} onChange={(event) => setDiscount(event.target.value)} /></Field>
                 <Field>
                   <FieldLabel>Payment Method</FieldLabel>
