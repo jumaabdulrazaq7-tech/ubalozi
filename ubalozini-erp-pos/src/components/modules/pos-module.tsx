@@ -44,6 +44,12 @@ type SaleResult = {
   balance_tzs: number;
 };
 
+function defaultDueDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return date.toISOString().slice(0, 10);
+}
+
 export function PosModule() {
   const supabase = useMemo(() => createClient(), []);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -56,6 +62,7 @@ export function PosModule() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash");
   const [amountPaid, setAmountPaid] = useState("");
+  const [dueDate, setDueDate] = useState(defaultDueDate());
   const [reference, setReference] = useState("");
   const [discount, setDiscount] = useState("0");
   const [loading, setLoading] = useState(true);
@@ -176,8 +183,20 @@ export function PosModule() {
       setError("Add at least one item to cart.");
       return;
     }
-    if (paid <= 0) {
-      setError("Enter payment amount.");
+    if (paid < 0) {
+      setError("Payment amount cannot be negative.");
+      return;
+    }
+    if (paid > total) {
+      setError("Payment cannot exceed sale total.");
+      return;
+    }
+    if (balance > 0 && customerId === "walk-in") {
+      setError("Credit sale requires selecting a customer.");
+      return;
+    }
+    if (balance > 0 && !dueDate) {
+      setError("Credit sale requires a due date.");
       return;
     }
 
@@ -203,6 +222,7 @@ export function PosModule() {
       ],
       p_discount_tzs: Number(discount || 0),
       p_tax_tzs: 0,
+      p_due_date: balance > 0 ? dueDate : null,
     });
 
     setSubmitting(false);
@@ -217,6 +237,7 @@ export function PosModule() {
     setCart([]);
     setAmountPaid("");
     setReference("");
+    setDueDate(defaultDueDate());
     await loadData(branchId);
   }
 
@@ -324,14 +345,16 @@ export function PosModule() {
                     <SelectContent><SelectGroup><SelectItem value="Cash">Cash</SelectItem><SelectItem value="Bank Transfer">Bank Transfer</SelectItem><SelectItem value="Mobile Money">Mobile Money</SelectItem></SelectGroup></SelectContent>
                   </Select>
                 </Field>
-                <Field><FieldLabel>Amount Paid TZS</FieldLabel><Input type="number" min="0" value={amountPaid} onChange={(event) => setAmountPaid(event.target.value)} required /></Field>
+                <Field><FieldLabel>Amount Paid TZS</FieldLabel><Input type="number" min="0" value={amountPaid} onChange={(event) => setAmountPaid(event.target.value)} /></Field>
+                {balance > 0 ? <Field><FieldLabel>Credit Due Date</FieldLabel><Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} required /></Field> : null}
                 <Field><FieldLabel>Payment Reference</FieldLabel><Input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Optional reference" /></Field>
               </FieldGroup>
               <div className="rounded-lg border bg-muted/40 p-3 text-sm">
                 <div className="flex justify-between"><span>Subtotal</span><strong>{money.format(subtotal)}</strong></div>
                 <div className="flex justify-between"><span>Discount</span><strong>{money.format(Number(discount || 0))}</strong></div>
                 <div className="flex justify-between text-base"><span>Total</span><strong>{money.format(total)}</strong></div>
-                <div className="flex justify-between"><span>Balance</span><strong>{money.format(balance)}</strong></div>
+                <div className="flex justify-between"><span>Balance</span><strong className={balance > 0 ? "text-destructive" : ""}>{money.format(balance)}</strong></div>
+                {balance > 0 ? <div className="mt-2 text-xs text-muted-foreground">Credit balance will be saved in Debt Management.</div> : null}
               </div>
               <Button type="submit" disabled={submitting || cart.length === 0}>{submitting ? "Completing sale..." : "Complete Sale"}</Button>
               {saleResult ? (
