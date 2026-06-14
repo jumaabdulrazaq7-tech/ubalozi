@@ -41,7 +41,7 @@ jobs:
       - name: Build static site
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://ezbkbztdqwtcrdxvganl.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_lRtooiYyq7B6I1vxjhBXCA_FYEs9FjD
         run: npm run build
 
       - name: Upload Pages artifact
