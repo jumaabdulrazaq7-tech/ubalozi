@@ -1,5 +1,16 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## UBALOZINI live configuration
+
+Set these variables for local development:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://ezbkbztdqwtcrdxvganl.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-public-supabase-key
+```
+
+For GitHub Pages deployment, add `SUPABASE_PUBLISHABLE_KEY` as a repository Actions secret.
+
 ## Getting Started
 
 First, run the development server:

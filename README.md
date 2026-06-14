@@ -32,3 +32,10 @@ Verified:
 - `npm run lint`
 - `npm run build`
 - Browser render check on `/dashboard` and `/forgot-password`
+
+Phase 2 live setup:
+
+1. In GitHub, open repository Settings -> Secrets and variables -> Actions.
+2. Add repository secret `SUPABASE_PUBLISHABLE_KEY` with the Supabase public publishable/anon key.
+3. Re-run the `Deploy UBalozi ERP to GitHub Pages` workflow or push a new commit.
+4. In Supabase Auth, create the first staff user, then set their `profiles.role` to `admin`.

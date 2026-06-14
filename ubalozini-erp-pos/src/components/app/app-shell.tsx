@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   BadgeDollarSign,
   Boxes,
@@ -17,10 +21,13 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
@@ -74,6 +81,86 @@ function Sidebar() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [user, setUser] = useState<User | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    if (!supabase) {
+      setLoadingSession(false);
+      return;
+    }
+
+    let mounted = true;
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      setUser(data.user);
+      setLoadingSession(false);
+      if (!data.user && pathname !== "/login") {
+        router.replace("/login");
+      }
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (!session?.user && pathname !== "/login") {
+        router.replace("/login");
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.subscription.unsubscribe();
+    };
+  }, [pathname, router, supabase]);
+
+  async function handleLogout() {
+    await supabase?.auth.signOut();
+    router.replace("/login");
+  }
+
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background p-4">
+        <Alert className="max-w-xl">
+          <ShieldCheck />
+          <AlertTitle>Supabase key is required</AlertTitle>
+          <AlertDescription>
+            Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to run live database features.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (loadingSession) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background p-4 text-sm text-muted-foreground">
+        Loading secure workspace...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background p-4 text-sm text-muted-foreground">
+        Redirecting to login...
+      </div>
+    );
+  }
+
+  const initials =
+    user.email
+      ?.split("@")[0]
+      .split(/[._-]/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "UB";
+
   return (
     <div className="min-h-screen bg-background">
       <div className="flex">
@@ -124,9 +211,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Moon />
             </Button>
             <Avatar className="size-9">
-              <AvatarFallback>AD</AvatarFallback>
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
-            <Button variant="ghost" size="icon" aria-label="Logout">
+            <Button variant="ghost" size="icon" aria-label="Logout" onClick={handleLogout}>
               <LogOut />
             </Button>
           </header>
