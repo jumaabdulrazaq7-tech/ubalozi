@@ -42,6 +42,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://ezbkbztdqwtcrdxvganl.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_lRtooiYyq7B6I1vxjhBXCA_FYEs9FjD
+          NEXT_PUBLIC_BASE_PATH: /ubalozi
         run: npm run build
 
       - name: Upload Pages artifact

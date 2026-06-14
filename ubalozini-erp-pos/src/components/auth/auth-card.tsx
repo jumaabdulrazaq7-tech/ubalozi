@@ -47,11 +47,11 @@ export function LoginCard() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <div className="mb-3">
-          <BrandLogo size="lg" />
+        <div className="mb-4 flex justify-center">
+          <BrandLogo size="lg" centered />
         </div>
-        <CardTitle>Sign in to UBALOZINI ERP</CardTitle>
-        <CardDescription>Admin and sales staff access for branch operations.</CardDescription>
+        <CardTitle className="text-center">Sign in to UBALOZINI ERP</CardTitle>
+        <CardDescription className="text-center">Admin and sales staff access for branch operations.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
