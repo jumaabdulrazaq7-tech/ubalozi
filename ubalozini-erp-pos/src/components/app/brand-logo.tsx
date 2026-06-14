@@ -4,10 +4,12 @@ export function BrandLogo({
   size = "md",
   showText = true,
   centered = false,
+  imageClassName,
 }: {
   size?: "sm" | "md" | "lg";
   showText?: boolean;
   centered?: boolean;
+  imageClassName?: string;
 }) {
   const imageSize = size === "lg" ? 64 : size === "sm" ? 36 : 44;
   const logoSrc = process.env.NEXT_PUBLIC_BASE_PATH
@@ -24,7 +26,8 @@ export function BrandLogo({
         height={imageSize}
         className={cn(
           "shrink-0 rounded-md border border-sidebar-border object-cover shadow-sm",
-          size === "lg" && "rounded-lg"
+          size === "lg" && "rounded-lg",
+          imageClassName
         )}
       />
       {showText ? (

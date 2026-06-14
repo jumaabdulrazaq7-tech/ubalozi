@@ -47,8 +47,12 @@ export function LoginCard() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <div className="mb-4 flex justify-center">
-          <BrandLogo size="lg" centered />
+        <div className="mb-5 flex flex-col items-center gap-4 text-center">
+          <BrandLogo size="lg" showText={false} centered imageClassName="size-28 border-[#ffc247]/35" />
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-xl font-semibold tracking-wide text-[#ffc247]">UBALOZINI ELECTRONICS</p>
+            <p className="text-xs tracking-[0.35em] text-muted-foreground">SMART WORLD</p>
+          </div>
         </div>
         <CardTitle className="text-center">Sign in to UBALOZINI ERP</CardTitle>
         <CardDescription className="text-center">Admin and sales staff access for branch operations.</CardDescription>
