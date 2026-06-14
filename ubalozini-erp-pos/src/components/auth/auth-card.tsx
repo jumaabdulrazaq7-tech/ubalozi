@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { AlertCircle, BadgeDollarSign, CheckCircle2, LockKeyhole, Mail } from "lucide-react";
+import { AlertCircle, CheckCircle2, LockKeyhole, Mail } from "lucide-react";
+import { BrandLogo } from "@/components/app/brand-logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,8 +47,8 @@ export function LoginCard() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <div className="mb-3 grid size-12 place-items-center rounded-md bg-primary text-primary-foreground">
-          <BadgeDollarSign />
+        <div className="mb-3">
+          <BrandLogo size="lg" />
         </div>
         <CardTitle>Sign in to UBALOZINI ERP</CardTitle>
         <CardDescription>Admin and sales staff access for branch operations.</CardDescription>

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
-  BadgeDollarSign,
   Boxes,
   Building2,
   ChevronRight,
@@ -22,6 +21,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import { BrandLogo } from "@/components/app/brand-logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -43,14 +43,8 @@ const navigation = [
 function Sidebar() {
   return (
     <aside className="hidden min-h-screen w-72 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex lg:flex-col">
-      <div className="flex h-20 items-center gap-3 px-6">
-        <div className="grid size-11 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-          <BadgeDollarSign />
-        </div>
-        <div>
-          <p className="text-sm font-semibold leading-none">UBALOZINI</p>
-          <p className="mt-1 text-xs text-sidebar-foreground/65">Electronics ERP</p>
-        </div>
+      <div className="flex h-20 items-center px-6">
+        <BrandLogo />
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-3">
         {navigation.map((item) => (
@@ -177,14 +171,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </SheetTrigger>
               <SheetContent side="left" className="w-80 p-0">
                 <SheetTitle className="sr-only">Navigation</SheetTitle>
-                <div className="flex h-20 items-center gap-3 px-6">
-                  <div className="grid size-10 place-items-center rounded-md bg-primary text-primary-foreground">
-                    <BadgeDollarSign />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">UBALOZINI</p>
-                    <p className="text-xs text-muted-foreground">Electronics ERP</p>
-                  </div>
+                <div className="flex h-20 items-center px-6">
+                  <BrandLogo />
                 </div>
                 <Separator />
                 <nav className="flex flex-col gap-1 p-3">
@@ -198,8 +186,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </SheetContent>
             </Sheet>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">UBALOZINI ELECTRONICS</p>
-              <p className="truncate text-xs text-muted-foreground">Lumumba, Sokoni, and Kariakoo branch operations</p>
+              <p className="truncate text-sm font-semibold text-[#ffc247]">UBALOZINI ELECTRONICS</p>
+              <p className="truncate text-xs text-muted-foreground">Smart World operations across Lumumba, Sokoni, and Kariakoo</p>
             </div>
             <Button variant="outline" size="icon" aria-label="Switch language">
               <Languages />
