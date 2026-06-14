@@ -1,5 +1,7 @@
 create extension if not exists "pgcrypto";
 
+create schema if not exists app_private;
+
 create type public.user_role as enum ('admin', 'sales_person');
 create type public.branch_status as enum ('active', 'inactive');
 create type public.product_category as enum ('Phones', 'Accessories', 'Spare Parts');
@@ -215,7 +217,7 @@ create trigger imei_devices_set_updated_at before update on public.imei_devices 
 create trigger customers_set_updated_at before update on public.customers for each row execute function public.set_updated_at();
 create trigger customer_debts_set_updated_at before update on public.customer_debts for each row execute function public.set_updated_at();
 
-create or replace function public.current_user_role()
+create or replace function app_private.current_user_role()
 returns public.user_role
 language sql
 stable
@@ -225,7 +227,7 @@ as $$
   select role from public.profiles where id = auth.uid() and is_active = true
 $$;
 
-create or replace function public.current_user_branch_id()
+create or replace function app_private.current_user_branch_id()
 returns uuid
 language sql
 stable
@@ -235,15 +237,20 @@ as $$
   select branch_id from public.profiles where id = auth.uid() and is_active = true
 $$;
 
-create or replace function public.is_admin()
+create or replace function app_private.is_admin()
 returns boolean
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select public.current_user_role() = 'admin'
+  select app_private.current_user_role() = 'admin'
 $$;
+
+revoke all on schema app_private from public;
+grant usage on schema app_private to authenticated;
+revoke all on all functions in schema app_private from public;
+grant execute on all functions in schema app_private to authenticated;
 
 alter table public.branches enable row level security;
 alter table public.profiles enable row level security;
@@ -261,85 +268,85 @@ alter table public.customer_debts enable row level security;
 alter table public.debt_payments enable row level security;
 
 create policy "Authenticated users can read active branches" on public.branches for select to authenticated using (true);
-create policy "Admins manage branches" on public.branches for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage branches" on public.branches for all to authenticated using (app_private.is_admin()) with check (app_private.is_admin());
 
-create policy "Users read own profile or admins read all" on public.profiles for select to authenticated using (id = auth.uid() or public.is_admin());
-create policy "Admins manage profiles" on public.profiles for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Users read own profile or admins read all" on public.profiles for select to authenticated using (id = auth.uid() or app_private.is_admin());
+create policy "Admins manage profiles" on public.profiles for all to authenticated using (app_private.is_admin()) with check (app_private.is_admin());
 
 create policy "Authenticated users read suppliers" on public.suppliers for select to authenticated using (true);
-create policy "Admins manage suppliers" on public.suppliers for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage suppliers" on public.suppliers for all to authenticated using (app_private.is_admin()) with check (app_private.is_admin());
 
 create policy "Authenticated users read products" on public.products for select to authenticated using (true);
-create policy "Admins manage products" on public.products for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage products" on public.products for all to authenticated using (app_private.is_admin()) with check (app_private.is_admin());
 
 create policy "Authenticated users read product images" on public.product_images for select to authenticated using (true);
-create policy "Admins manage product images" on public.product_images for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage product images" on public.product_images for all to authenticated using (app_private.is_admin()) with check (app_private.is_admin());
 
 create policy "Users read imei devices by role or branch" on public.imei_devices for select to authenticated
-using (public.is_admin() or branch_id = public.current_user_branch_id());
-create policy "Admins manage imei devices" on public.imei_devices for all to authenticated using (public.is_admin()) with check (public.is_admin());
+using (app_private.is_admin() or branch_id = app_private.current_user_branch_id());
+create policy "Admins manage imei devices" on public.imei_devices for all to authenticated using (app_private.is_admin()) with check (app_private.is_admin());
 create policy "Sales update imei devices in own branch" on public.imei_devices for update to authenticated
-using (branch_id = public.current_user_branch_id())
-with check (branch_id = public.current_user_branch_id());
+using (branch_id = app_private.current_user_branch_id())
+with check (branch_id = app_private.current_user_branch_id());
 
 create policy "Users read imei history by device branch" on public.imei_history for select to authenticated
 using (
-  public.is_admin()
+  app_private.is_admin()
   or exists (
     select 1 from public.imei_devices d
     where d.id = imei_history.imei_device_id
-    and d.branch_id = public.current_user_branch_id()
+    and d.branch_id = app_private.current_user_branch_id()
   )
 );
-create policy "Authenticated users insert imei history" on public.imei_history for insert to authenticated with check (actor_id = auth.uid() or public.is_admin());
+create policy "Authenticated users insert imei history" on public.imei_history for insert to authenticated with check (actor_id = auth.uid() or app_private.is_admin());
 
 create policy "Authenticated users read customers" on public.customers for select to authenticated using (true);
-create policy "Authenticated users manage customers" on public.customers for all to authenticated using (public.is_admin() or created_by = auth.uid()) with check (public.is_admin() or created_by = auth.uid());
+create policy "Authenticated users manage customers" on public.customers for all to authenticated using (app_private.is_admin() or created_by = auth.uid()) with check (app_private.is_admin() or created_by = auth.uid());
 
 create policy "Users read sales by role or branch" on public.sales for select to authenticated
-using (public.is_admin() or branch_id = public.current_user_branch_id() or sold_by = auth.uid());
+using (app_private.is_admin() or branch_id = app_private.current_user_branch_id() or sold_by = auth.uid());
 create policy "Users create sales in own branch" on public.sales for insert to authenticated
-with check (public.is_admin() or (branch_id = public.current_user_branch_id() and sold_by = auth.uid()));
-create policy "Admins update sales" on public.sales for update to authenticated using (public.is_admin()) with check (public.is_admin());
+with check (app_private.is_admin() or (branch_id = app_private.current_user_branch_id() and sold_by = auth.uid()));
+create policy "Admins update sales" on public.sales for update to authenticated using (app_private.is_admin()) with check (app_private.is_admin());
 
 create policy "Users read sale items through visible sale" on public.sale_items for select to authenticated
-using (exists (select 1 from public.sales s where s.id = sale_items.sale_id and (public.is_admin() or s.branch_id = public.current_user_branch_id() or s.sold_by = auth.uid())));
+using (exists (select 1 from public.sales s where s.id = sale_items.sale_id and (app_private.is_admin() or s.branch_id = app_private.current_user_branch_id() or s.sold_by = auth.uid())));
 create policy "Users create sale items through own sale" on public.sale_items for insert to authenticated
-with check (exists (select 1 from public.sales s where s.id = sale_items.sale_id and (public.is_admin() or (s.branch_id = public.current_user_branch_id() and s.sold_by = auth.uid()))));
+with check (exists (select 1 from public.sales s where s.id = sale_items.sale_id and (app_private.is_admin() or (s.branch_id = app_private.current_user_branch_id() and s.sold_by = auth.uid()))));
 
 create policy "Users read sale payments through visible sale" on public.sale_payments for select to authenticated
-using (exists (select 1 from public.sales s where s.id = sale_payments.sale_id and (public.is_admin() or s.branch_id = public.current_user_branch_id() or s.sold_by = auth.uid())));
+using (exists (select 1 from public.sales s where s.id = sale_payments.sale_id and (app_private.is_admin() or s.branch_id = app_private.current_user_branch_id() or s.sold_by = auth.uid())));
 create policy "Users create sale payments in own branch" on public.sale_payments for insert to authenticated
-with check (received_by = auth.uid() or public.is_admin());
+with check (received_by = auth.uid() or app_private.is_admin());
 
 create policy "Users read inventory by role or branch" on public.inventory_movements for select to authenticated
-using (public.is_admin() or from_branch_id = public.current_user_branch_id() or to_branch_id = public.current_user_branch_id());
+using (app_private.is_admin() or from_branch_id = app_private.current_user_branch_id() or to_branch_id = app_private.current_user_branch_id());
 create policy "Users create inventory movements for own branch" on public.inventory_movements for insert to authenticated
-with check (public.is_admin() or actor_id = auth.uid());
+with check (app_private.is_admin() or actor_id = auth.uid());
 
 create policy "Users read debts by role or branch sale" on public.customer_debts for select to authenticated
 using (
-  public.is_admin()
-  or exists (select 1 from public.sales s where s.id = customer_debts.sale_id and s.branch_id = public.current_user_branch_id())
+  app_private.is_admin()
+  or exists (select 1 from public.sales s where s.id = customer_debts.sale_id and s.branch_id = app_private.current_user_branch_id())
 );
 create policy "Users create debts from own sales" on public.customer_debts for insert to authenticated
 with check (
-  public.is_admin()
-  or exists (select 1 from public.sales s where s.id = customer_debts.sale_id and s.branch_id = public.current_user_branch_id() and s.sold_by = auth.uid())
+  app_private.is_admin()
+  or exists (select 1 from public.sales s where s.id = customer_debts.sale_id and s.branch_id = app_private.current_user_branch_id() and s.sold_by = auth.uid())
 );
-create policy "Admins update debts" on public.customer_debts for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins update debts" on public.customer_debts for update to authenticated using (app_private.is_admin()) with check (app_private.is_admin());
 
 create policy "Users read debt payments through visible debt" on public.debt_payments for select to authenticated
 using (
-  public.is_admin()
+  app_private.is_admin()
   or exists (
     select 1 from public.customer_debts d
     join public.sales s on s.id = d.sale_id
     where d.id = debt_payments.debt_id
-    and s.branch_id = public.current_user_branch_id()
+    and s.branch_id = app_private.current_user_branch_id()
   )
 );
-create policy "Users collect debt payments" on public.debt_payments for insert to authenticated with check (collected_by = auth.uid() or public.is_admin());
+create policy "Users collect debt payments" on public.debt_payments for insert to authenticated with check (collected_by = auth.uid() or app_private.is_admin());
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
