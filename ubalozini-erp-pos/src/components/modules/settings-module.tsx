@@ -26,6 +26,7 @@ type ProfileRow = {
 export function SettingsModule() {
   const supabase = useMemo(() => createClient(), []);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -54,7 +55,18 @@ export function SettingsModule() {
       setError(profileError.message);
       return;
     }
-    setProfile(data as unknown as ProfileRow);
+    const nextProfile = data as unknown as ProfileRow;
+    setProfile(nextProfile);
+    if (nextProfile.avatar_url) {
+      if (nextProfile.avatar_url.startsWith("http")) {
+        setAvatarSrc(nextProfile.avatar_url);
+      } else {
+        const { data: signed } = await supabase.storage.from("profile-avatars").createSignedUrl(nextProfile.avatar_url, 3600);
+        setAvatarSrc(signed?.signedUrl ?? null);
+      }
+    } else {
+      setAvatarSrc(null);
+    }
   }
 
   useEffect(() => {
@@ -80,8 +92,7 @@ export function SettingsModule() {
       });
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage.from("profile-avatars").getPublicUrl(storagePath);
-      const { error: updateError } = await supabase.rpc("update_own_avatar_url", { p_avatar_url: data.publicUrl });
+      const { error: updateError } = await supabase.rpc("update_own_avatar_url", { p_avatar_url: storagePath });
       if (updateError) throw updateError;
 
       setFile(null);
@@ -116,7 +127,7 @@ export function SettingsModule() {
             {message ? <Alert><Upload /><AlertTitle>Saved</AlertTitle><AlertDescription>{message}</AlertDescription></Alert> : null}
             <div className="flex items-center gap-4">
               <Avatar className="size-20" size="lg">
-                {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt={profile.full_name} /> : null}
+                {avatarSrc ? <AvatarImage src={avatarSrc} alt={profile?.full_name ?? "Profile"} /> : null}
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div>

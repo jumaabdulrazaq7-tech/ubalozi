@@ -79,6 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<{ full_name: string; role: string; avatar_url: string | null } | null>(null);
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [loadingSession, setLoadingSession] = useState(true);
   const supabase = useMemo(() => createClient(), []);
@@ -107,7 +108,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           .select("full_name,role,avatar_url")
           .eq("id", data.user.id)
           .single();
-        if (mounted) setProfile((profileData as { full_name: string; role: string; avatar_url: string | null } | null) ?? null);
+        const nextProfile = (profileData as { full_name: string; role: string; avatar_url: string | null } | null) ?? null;
+        if (mounted) {
+          setProfile(nextProfile);
+          if (nextProfile?.avatar_url) {
+            if (nextProfile.avatar_url.startsWith("http")) {
+              setAvatarSrc(nextProfile.avatar_url);
+            } else {
+              const { data: signed } = await supabase.storage.from("profile-avatars").createSignedUrl(nextProfile.avatar_url, 3600);
+              if (mounted) setAvatarSrc(signed?.signedUrl ?? null);
+            }
+          } else {
+            setAvatarSrc(null);
+          }
+        }
       }
       setLoadingSession(false);
       if (!data.user && pathname !== "/login") {
@@ -117,7 +131,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (!session?.user) setProfile(null);
+      if (!session?.user) {
+        setProfile(null);
+        setAvatarSrc(null);
+      }
       if (!session?.user && pathname !== "/login") {
         router.replace("/login");
       }
@@ -223,7 +240,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Moon />
             </Button>
             <Avatar className="size-9">
-              {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt={profile.full_name} /> : null}
+              {avatarSrc ? <AvatarImage src={avatarSrc} alt={profile?.full_name ?? "Profile"} /> : null}
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <Button variant="ghost" size="icon" aria-label="Logout" onClick={handleLogout}>
