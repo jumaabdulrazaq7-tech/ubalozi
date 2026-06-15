@@ -19,7 +19,7 @@ import type { PaymentMethod } from "@/types/erp";
 
 type Branch = { id: string; name: string };
 type Customer = { id: string; name: string; phone: string };
-type Product = { id: string; name: string; brand: string; model: string; category: string; barcode: string; qr_code: string };
+type Product = { id: string; name: string; brand: string; model: string; category: string; barcode: string; qr_code: string; stock_available?: number };
 type Device = {
   id: string;
   product_id: string;
@@ -82,23 +82,36 @@ export function PosModule() {
     setLoading(true);
     setError(null);
 
-    const [branchResult, customerResult, productResult] = await Promise.all([
+    const [branchResult, customerResult, productResult, stockResult] = await Promise.all([
       supabase.from("branches").select("id,name").eq("status", "active").order("name"),
       supabase.from("customers").select("id,name,phone").order("name"),
       supabase.from("products").select("id,name,brand,model,category,barcode,qr_code").eq("is_active", true).order("name"),
+      selectedBranchId
+        ? supabase.from("current_stock_summary").select("product_id,in_stock").eq("branch_id", selectedBranchId)
+        : supabase.from("current_stock_summary").select("product_id,in_stock").limit(0),
     ]);
 
-    if (branchResult.error || customerResult.error || productResult.error) {
+    if (branchResult.error || customerResult.error || productResult.error || stockResult.error) {
       setLoading(false);
-      setError(branchResult.error?.message || customerResult.error?.message || productResult.error?.message || "Unable to load POS data.");
+      setError(branchResult.error?.message || customerResult.error?.message || productResult.error?.message || stockResult.error?.message || "Unable to load POS data.");
       return;
     }
 
     const loadedBranches = (branchResult.data ?? []) as Branch[];
     const nextBranchId = selectedBranchId || loadedBranches[0]?.id || "";
+    let productStock = new Map<string, number>((stockResult.data ?? []).map((row) => [row.product_id as string, Number(row.in_stock ?? 0)]));
+    if (!selectedBranchId && nextBranchId) {
+      const { data: nextStock, error: nextStockError } = await supabase.from("current_stock_summary").select("product_id,in_stock").eq("branch_id", nextBranchId);
+      if (nextStockError) {
+        setLoading(false);
+        setError(nextStockError.message);
+        return;
+      }
+      productStock = new Map((nextStock ?? []).map((row) => [row.product_id as string, Number(row.in_stock ?? 0)]));
+    }
     setBranches(loadedBranches);
     setCustomers((customerResult.data ?? []) as Customer[]);
-    setProducts((productResult.data ?? []) as Product[]);
+    setProducts(((productResult.data ?? []) as Product[]).map((product) => ({ ...product, stock_available: productStock.get(product.id) ?? 0 })));
     setBranchId(nextBranchId);
 
     if (nextBranchId) {
@@ -134,6 +147,11 @@ export function PosModule() {
     const price = Number(sellingPrice[product.id] || 0);
     if (!price) {
       setError("Enter selling price before adding product.");
+      return;
+    }
+    const inCart = cart.filter((item) => item.product_id === product.id && !item.imei_device_id).reduce((sum, item) => sum + item.quantity, 0);
+    if ((product.stock_available ?? 0) - inCart <= 0) {
+      setError("This product does not have enough stock in the selected branch.");
       return;
     }
     setError(null);
@@ -299,10 +317,10 @@ export function PosModule() {
                 <TableBody>
                   {filteredProducts.length === 0 ? <TableRow><TableCell colSpan={4} className="text-muted-foreground">No accessory/spare product found.</TableCell></TableRow> : filteredProducts.map((product) => (
                     <TableRow key={product.id}>
-                      <TableCell><div className="font-medium">{product.name}</div><div className="text-xs text-muted-foreground">{product.brand} {product.model}</div></TableCell>
+                      <TableCell><div className="font-medium">{product.name}</div><div className="text-xs text-muted-foreground">{product.brand} {product.model}</div><Badge variant={(product.stock_available ?? 0) > 0 ? "secondary" : "destructive"} className="mt-1">Stock {product.stock_available ?? 0}</Badge></TableCell>
                       <TableCell><div className="font-mono text-xs">{product.barcode}</div><div className="font-mono text-xs text-muted-foreground">{product.qr_code}</div></TableCell>
                       <TableCell><Input type="number" min="0" placeholder="TZS" value={sellingPrice[product.id] ?? ""} onChange={(event) => setSellingPrice((current) => ({ ...current, [product.id]: event.target.value }))} /></TableCell>
-                      <TableCell><Button size="sm" onClick={() => addProduct(product)}><Plus data-icon="inline-start" /> Add</Button></TableCell>
+                      <TableCell><Button size="sm" onClick={() => addProduct(product)} disabled={(product.stock_available ?? 0) <= cart.filter((item) => item.product_id === product.id && !item.imei_device_id).reduce((sum, item) => sum + item.quantity, 0)}><Plus data-icon="inline-start" /> Add</Button></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

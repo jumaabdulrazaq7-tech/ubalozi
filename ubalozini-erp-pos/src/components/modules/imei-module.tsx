@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -36,6 +37,17 @@ type DeviceRow = {
   branches: { name: string } | null;
   suppliers: { name: string } | null;
 };
+type HistoryRow = {
+  id: string;
+  event_type: string;
+  from_status: ImeiStatus | null;
+  to_status: ImeiStatus | null;
+  notes: string | null;
+  created_at: string;
+  from_branch: { name: string } | null;
+  to_branch: { name: string } | null;
+  actor: { full_name: string } | null;
+};
 
 const emptyForm = {
   product_id: "",
@@ -62,6 +74,9 @@ export function ImeiModule() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDevice, setSelectedDevice] = useState<DeviceRow | null>(null);
+  const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const calculatedCost = Number(form.purchase_price_aed || 0) * Number(form.exchange_rate || 0);
   const calculatedProfit = form.selling_price_tzs ? Number(form.selling_price_tzs) - calculatedCost : null;
@@ -179,6 +194,23 @@ export function ImeiModule() {
     ].join(" ").toLowerCase().includes(needle);
   });
 
+  async function openHistory(device: DeviceRow) {
+    if (!supabase) return;
+    setSelectedDevice(device);
+    setLoadingHistory(true);
+    const { data, error: historyError } = await supabase
+      .from("imei_history")
+      .select("id,event_type,from_status,to_status,notes,created_at,from_branch:branches!imei_history_from_branch_id_fkey(name),to_branch:branches!imei_history_to_branch_id_fkey(name),actor:profiles!imei_history_actor_id_fkey(full_name)")
+      .eq("imei_device_id", device.id)
+      .order("created_at", { ascending: false });
+    setLoadingHistory(false);
+    if (historyError) {
+      setError(historyError.message);
+      return;
+    }
+    setHistoryRows((data ?? []) as unknown as HistoryRow[]);
+  }
+
   return (
     <AppShell>
       <PageHeader title="IMEI Device Management" description="Track every phone individually from purchase in AED to sale in TZS, warranty, status, and history." actionLabel="Register IMEI" />
@@ -238,7 +270,7 @@ export function ImeiModule() {
                     <TableCell><div>{aed.format(device.purchase_price_aed)}</div><div className="text-xs text-muted-foreground">{money.format(device.purchase_price_tzs)}</div></TableCell>
                     <TableCell>{device.branches?.name ?? "-"}</TableCell>
                     <TableCell><Badge variant={device.status === "Sold" ? "secondary" : "outline"}><CheckCircle2 className="mr-1 size-3" />{device.status}</Badge></TableCell>
-                    <TableCell><Button variant="ghost" size="sm"><History data-icon="inline-start" /> View</Button></TableCell>
+                    <TableCell><Button variant="ghost" size="sm" onClick={() => openHistory(device)}><History data-icon="inline-start" /> View</Button></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -246,6 +278,31 @@ export function ImeiModule() {
           </CardContent>
         </Card>
       </section>
+      <Dialog open={Boolean(selectedDevice)} onOpenChange={(open) => { if (!open) setSelectedDevice(null); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>IMEI History</DialogTitle>
+            <DialogDescription>{selectedDevice?.products?.name ?? "Device"} - {selectedDevice?.imei_number}</DialogDescription>
+          </DialogHeader>
+          <Table>
+            <TableHeader><TableRow><TableHead>Event</TableHead><TableHead>Status</TableHead><TableHead>Branch</TableHead><TableHead>Notes</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {loadingHistory ? (
+                <TableRow><TableCell colSpan={4} className="text-muted-foreground">Loading history...</TableCell></TableRow>
+              ) : historyRows.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-muted-foreground">No history recorded.</TableCell></TableRow>
+              ) : historyRows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell><div className="font-medium">{row.event_type}</div><div className="text-xs text-muted-foreground">{new Date(row.created_at).toLocaleString()}</div></TableCell>
+                  <TableCell><div className="text-xs">{row.from_status ?? "-"} {"->"} {row.to_status ?? "-"}</div></TableCell>
+                  <TableCell><div className="text-xs">{row.from_branch?.name ?? "-"} {"->"} {row.to_branch?.name ?? "-"}</div></TableCell>
+                  <TableCell><div className="text-xs">{row.notes ?? "-"}</div><div className="text-xs text-muted-foreground">{row.actor?.full_name ?? ""}</div></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

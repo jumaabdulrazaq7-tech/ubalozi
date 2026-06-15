@@ -59,26 +59,24 @@ export function ProductsModule() {
     if (!supabase) return;
     setLoading(true);
     setError(null);
-    const [{ data, error: productsError }, { data: devices, error: devicesError }] = await Promise.all([
+    const [{ data, error: productsError }, { data: stockRows, error: stockError }] = await Promise.all([
       supabase
         .from("products")
         .select("id,name,brand,model,category,barcode,qr_code,description,low_stock_threshold")
         .eq("is_active", true)
         .order("name"),
-      supabase.from("imei_devices").select("product_id,status"),
+      supabase.from("current_stock_summary").select("product_id,in_stock"),
     ]);
     setLoading(false);
 
-    if (productsError || devicesError) {
-      setError(productsError?.message || devicesError?.message || "Unable to load products.");
+    if (productsError || stockError) {
+      setError(productsError?.message || stockError?.message || "Unable to load products.");
       return;
     }
 
     const counts: StockCount = {};
-    (devices ?? []).forEach((device) => {
-      if (device.status === "In Stock") {
-        counts[device.product_id] = (counts[device.product_id] ?? 0) + 1;
-      }
+    (stockRows ?? []).forEach((row) => {
+      counts[row.product_id] = (counts[row.product_id] ?? 0) + Number(row.in_stock ?? 0);
     });
     setStockCount(counts);
     setProducts((data ?? []) as ProductRow[]);
@@ -222,7 +220,7 @@ export function ProductsModule() {
           <CardHeader className="flex flex-row items-start justify-between gap-3">
             <div>
               <CardTitle>Products</CardTitle>
-              <CardDescription>Searchable live catalog with IMEI-based stock counts for phones.</CardDescription>
+              <CardDescription>Searchable live catalog with branch stock totals from inventory and IMEI devices.</CardDescription>
             </div>
             <Button variant="outline" size="icon" aria-label="Refresh products" onClick={loadProducts}><RefreshCw /></Button>
           </CardHeader>
