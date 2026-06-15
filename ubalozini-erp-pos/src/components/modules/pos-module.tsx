@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AlertCircle, Plus, ReceiptText, RefreshCw, Search, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
+import { CameraScanner } from "@/components/app/camera-scanner";
 import { PageHeader } from "@/components/app/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -272,9 +273,12 @@ export function PosModule() {
                   <SelectTrigger className="w-full"><SelectValue placeholder="Select branch" /></SelectTrigger>
                   <SelectContent><SelectGroup>{branches.map((branch) => <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>)}</SelectGroup></SelectContent>
                 </Select>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input className="pl-10" placeholder="Search barcode, QR, product, serial, or IMEI" value={search} onChange={(event) => setSearch(event.target.value)} />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input className="pl-10" placeholder="Search barcode, QR, product, serial, or IMEI" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" />
+                  </div>
+                  <CameraScanner label="Camera" onScan={setSearch} />
                 </div>
               </div>
               <Table>

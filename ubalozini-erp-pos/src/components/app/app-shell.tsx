@@ -23,7 +23,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -78,8 +78,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; role: string; avatar_url: string | null } | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [loadingSession, setLoadingSession] = useState(true);
   const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("ubalozini-theme");
+    const nextTheme = stored === "light" || stored === "dark" ? stored : "dark";
+    setTheme(nextTheme);
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -89,9 +98,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     let mounted = true;
 
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (!mounted) return;
       setUser(data.user);
+      if (data.user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("full_name,role,avatar_url")
+          .eq("id", data.user.id)
+          .single();
+        if (mounted) setProfile((profileData as { full_name: string; role: string; avatar_url: string | null } | null) ?? null);
+      }
       setLoadingSession(false);
       if (!data.user && pathname !== "/login") {
         router.replace("/login");
@@ -100,6 +117,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (!session?.user) setProfile(null);
       if (!session?.user && pathname !== "/login") {
         router.replace("/login");
       }
@@ -114,6 +132,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   async function handleLogout() {
     await supabase?.auth.signOut();
     router.replace("/login");
+  }
+
+  function setAppTheme(nextTheme: "light" | "dark") {
+    setTheme(nextTheme);
+    window.localStorage.setItem("ubalozini-theme", nextTheme);
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
   }
 
   if (!isSupabaseConfigured()) {
@@ -192,13 +216,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Button variant="outline" size="icon" aria-label="Switch language">
               <Languages />
             </Button>
-            <Button variant="outline" size="icon" aria-label="Light mode">
+            <Button variant={theme === "light" ? "secondary" : "outline"} size="icon" aria-label="Light mode" onClick={() => setAppTheme("light")}>
               <Sun />
             </Button>
-            <Button variant="outline" size="icon" aria-label="Dark mode">
+            <Button variant={theme === "dark" ? "secondary" : "outline"} size="icon" aria-label="Dark mode" onClick={() => setAppTheme("dark")}>
               <Moon />
             </Button>
             <Avatar className="size-9">
+              {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt={profile.full_name} /> : null}
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <Button variant="ghost" size="icon" aria-label="Logout" onClick={handleLogout}>

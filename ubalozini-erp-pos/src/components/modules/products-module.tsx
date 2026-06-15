@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AlertCircle, ImagePlus, Pencil, RefreshCw, Search, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
+import { CameraScanner } from "@/components/app/camera-scanner";
 import { PageHeader } from "@/components/app/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -203,8 +204,8 @@ export function ProductsModule() {
                   </Select>
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field><FieldLabel>Barcode</FieldLabel><Input placeholder="UBZ-PHN-0001" value={form.barcode} onChange={(event) => setForm((current) => ({ ...current, barcode: event.target.value }))} required /></Field>
-                  <Field><FieldLabel>QR Code</FieldLabel><Input placeholder="QR-UBZ-PHN-0001" value={form.qr_code} onChange={(event) => setForm((current) => ({ ...current, qr_code: event.target.value }))} required /></Field>
+                  <Field><FieldLabel>Barcode</FieldLabel><div className="flex gap-2"><Input placeholder="UBZ-PHN-0001" value={form.barcode} onChange={(event) => setForm((current) => ({ ...current, barcode: event.target.value }))} required /><CameraScanner label="Camera" onScan={(value) => setForm((current) => ({ ...current, barcode: value }))} /></div></Field>
+                  <Field><FieldLabel>QR Code</FieldLabel><div className="flex gap-2"><Input placeholder="QR-UBZ-PHN-0001" value={form.qr_code} onChange={(event) => setForm((current) => ({ ...current, qr_code: event.target.value }))} required /><CameraScanner label="Camera" onScan={(value) => setForm((current) => ({ ...current, qr_code: value }))} /></div></Field>
                 </div>
                 <Field><FieldLabel>Description</FieldLabel><Textarea placeholder="Device specifications and sale notes" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} /></Field>
                 <Field><FieldLabel>Low Stock Threshold</FieldLabel><Input type="number" min="0" value={form.low_stock_threshold} onChange={(event) => setForm((current) => ({ ...current, low_stock_threshold: event.target.value }))} /></Field>
@@ -226,9 +227,12 @@ export function ProductsModule() {
             <Button variant="outline" size="icon" aria-label="Refresh products" onClick={loadProducts}><RefreshCw /></Button>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search product, brand, barcode, QR..." className="pl-10" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Search product, brand, barcode, QR..." className="pl-10" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" />
+              </div>
+              <CameraScanner label="Camera" onScan={setSearch} />
             </div>
             <Table>
               <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Category</TableHead><TableHead>Stock</TableHead><TableHead>Codes</TableHead><TableHead></TableHead></TableRow></TableHeader>

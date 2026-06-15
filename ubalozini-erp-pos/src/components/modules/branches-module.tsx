@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AlertCircle, Building2, Pencil, Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, Building2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -33,6 +33,7 @@ const emptyForm = {
 export function BranchesModule() {
   const supabase = useMemo(() => createClient(), []);
   const [branches, setBranches] = useState<BranchRow[]>([]);
+  const [role, setRole] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,11 @@ export function BranchesModule() {
       .from("branches")
       .select("id,name,location,code,status")
       .order("name");
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData.user) {
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", userData.user.id).single();
+      setRole((profile as { role?: string } | null)?.role ?? null);
+    }
     setLoading(false);
 
     if (loadError) {
@@ -102,6 +108,26 @@ export function BranchesModule() {
       code: branch.code,
       status: branch.status,
     });
+  }
+
+  async function deleteBranch(branch: BranchRow) {
+    if (!supabase || role !== "admin") return;
+    const confirmed = window.confirm(`Delete branch "${branch.name}"? This only works when the branch has no linked stock, sales, users, or debt records.`);
+    if (!confirmed) return;
+
+    setError(null);
+    setMessage(null);
+    const { error: deleteError } = await supabase.from("branches").delete().eq("id", branch.id);
+    if (deleteError) {
+      setError("Branch could not be deleted because it has linked records. Set it inactive instead, or move/clear linked records first.");
+      return;
+    }
+    setMessage("Branch deleted successfully.");
+    if (editingId === branch.id) {
+      setEditingId(null);
+      setForm(emptyForm);
+    }
+    await loadBranches();
   }
 
   return (
@@ -175,7 +201,10 @@ export function BranchesModule() {
                     <TableCell className="font-mono">{branch.code}</TableCell>
                     <TableCell><Badge variant="secondary">{branch.status}</Badge></TableCell>
                     <TableCell>{branch.location}</TableCell>
-                    <TableCell><Button variant="ghost" size="icon" aria-label="Edit branch" onClick={() => editBranch(branch)}><Pencil /></Button></TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" aria-label="Edit branch" onClick={() => editBranch(branch)}><Pencil /></Button>
+                      {role === "admin" ? <Button variant="ghost" size="icon" aria-label="Delete branch" onClick={() => deleteBranch(branch)}><Trash2 /></Button> : null}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

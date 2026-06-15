@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, History, RefreshCw, Search } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
+import { CameraScanner } from "@/components/app/camera-scanner";
 import { PageHeader } from "@/components/app/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -196,7 +197,7 @@ export function ImeiModule() {
                     <SelectContent><SelectGroup>{products.map((product) => <SelectItem key={product.id} value={product.id}>{product.name}</SelectItem>)}</SelectGroup></SelectContent>
                   </Select>
                 </Field>
-                <div className="grid gap-4 sm:grid-cols-2"><Field><FieldLabel>IMEI Number</FieldLabel><Input placeholder="356789112345671" value={form.imei_number} onChange={(event) => setForm((current) => ({ ...current, imei_number: event.target.value }))} required /></Field><Field><FieldLabel>Serial Number</FieldLabel><Input placeholder="F7QXK2UB15PM" value={form.serial_number} onChange={(event) => setForm((current) => ({ ...current, serial_number: event.target.value }))} /></Field></div>
+                <div className="grid gap-4 sm:grid-cols-2"><Field><FieldLabel>IMEI Number</FieldLabel><div className="flex gap-2"><Input placeholder="356789112345671" value={form.imei_number} onChange={(event) => setForm((current) => ({ ...current, imei_number: event.target.value }))} required autoComplete="off" /><CameraScanner label="Camera" onScan={(value) => setForm((current) => ({ ...current, imei_number: value }))} /></div></Field><Field><FieldLabel>Serial Number</FieldLabel><Input placeholder="F7QXK2UB15PM" value={form.serial_number} onChange={(event) => setForm((current) => ({ ...current, serial_number: event.target.value }))} /></Field></div>
                 <div className="grid gap-4 sm:grid-cols-2"><Field><FieldLabel>Purchase Price AED</FieldLabel><Input type="number" min="0" step="0.01" placeholder="3100" value={form.purchase_price_aed} onChange={(event) => setForm((current) => ({ ...current, purchase_price_aed: event.target.value }))} required /></Field><Field><FieldLabel>Exchange Rate</FieldLabel><Input type="number" min="0" step="0.0001" placeholder="710" value={form.exchange_rate} onChange={(event) => setForm((current) => ({ ...current, exchange_rate: event.target.value }))} required /></Field></div>
                 <div className="grid gap-4 sm:grid-cols-2"><Field><FieldLabel>Cost Price TZS</FieldLabel><Input value={calculatedCost ? money.format(calculatedCost) : "TZS 0"} readOnly /></Field><Field><FieldLabel>Selling Price TZS</FieldLabel><Input type="number" min="0" step="0.01" placeholder="2750000" value={form.selling_price_tzs} onChange={(event) => setForm((current) => ({ ...current, selling_price_tzs: event.target.value }))} /></Field></div>
                 <Field><FieldLabel>Profit</FieldLabel><Input value={calculatedProfit === null ? "Add selling price to calculate profit" : money.format(calculatedProfit)} readOnly /></Field>
@@ -223,7 +224,7 @@ export function ImeiModule() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle>IMEI Verification</CardTitle><CardDescription>Search exact IMEI before sale, transfer, return, or warranty claim.</CardDescription></div><Button variant="outline" size="icon" aria-label="Refresh IMEI devices" onClick={loadData}><RefreshCw /></Button></CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Scan or type IMEI number" className="pl-10" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+            <div className="flex gap-2"><div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Scan or type IMEI number" className="pl-10" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" /></div><CameraScanner label="Camera" onScan={setSearch} /></div>
             <Table>
               <TableHeader><TableRow><TableHead>Device</TableHead><TableHead>Cost</TableHead><TableHead>Branch</TableHead><TableHead>Status</TableHead><TableHead>History</TableHead></TableRow></TableHeader>
               <TableBody>
